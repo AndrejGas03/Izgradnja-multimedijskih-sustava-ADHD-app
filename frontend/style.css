@@ -1,0 +1,590 @@
+/**
+ * ADHD Educational App - Frontend Styles
+ * ADHD & Dyslexia Optimized Design
+ * 
+ * Design Principles:
+ * - Minimalist: Zero visual clutter
+ * - High Contrast: Dark blue/black text on cream background
+ * - Large Typography: 18px+ for all text
+ * - Accessible: Simple, clear task presentation
+ * - Responsive: Works on all screen sizes
+ */
+
+/* ===========================
+   GLOBAL STYLES & RESET
+   =========================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    /* Dyslexia-friendly colors: high contrast */
+    background-color: #f5f3e9;
+    color: #1a1a2e;
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    line-height: 1.6;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* Main container - prevents visual clutter */
+#app {
+    width: 100%;
+    max-width: 900px;
+    background-color: #f5f3e9;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    min-height: 100vh;
+}
+
+/* ===========================
+   CONNECTION STATUS
+   =========================== */
+.connection-status {
+    text-align: center;
+    padding: 10px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: #4a5f7a;
+    background-color: #e8e5d6;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+.connection-status.connected {
+    color: #22c55e;
+    background-color: #f0fdf4;
+}
+
+.connection-status.error {
+    color: #ef4444;
+    background-color: #fef2f2;
+}
+
+/* ===========================
+   PROGRESS BAR & STARS
+   =========================== */
+.progress-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 40px;
+    padding: 20px;
+    background-color: #e8e5d6;
+    border-radius: 8px;
+}
+
+/* Stars - Large and easy to see */
+.star {
+    font-size: 48px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    filter: grayscale(100%);
+}
+
+.star.filled {
+    filter: grayscale(0%);
+    animation: starFill 0.6s ease;
+}
+
+@keyframes starFill {
+    0% {
+        transform: scale(0.5);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* ===========================
+   SCREEN MANAGEMENT
+   =========================== */
+.screen {
+    display: none;
+    text-align: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.screen.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* ===========================
+   TYPOGRAPHY
+   =========================== */
+h1 {
+    font-size: 48px;
+    margin-bottom: 20px;
+    color: #1a3a52;
+    letter-spacing: 2px;
+}
+
+h2 {
+    font-size: 36px;
+    margin-bottom: 30px;
+    color: #1a3a52;
+}
+
+h3 {
+    color: #1a3a52;
+    margin-bottom: 15px;
+    font-size: 24px;
+}
+
+.subtitle {
+    font-size: 20px;
+    margin-bottom: 40px;
+    color: #4a5f7a;
+}
+
+/* ===========================
+   BUTTONS - Large, High Contrast
+   =========================== */
+button {
+    background-color: #2d5a7b;
+    color: #f5f3e9;
+    border: none;
+    border-radius: 8px;
+    padding: 20px 40px;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 15px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    font-family: Arial, sans-serif;
+}
+
+button:hover {
+    background-color: #1a3a52;
+    transform: scale(1.05);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+button:disabled {
+    background-color: #999;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Speaker button - circular */
+.speaker-btn {
+    background-color: #d97706;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    padding: 0;
+    font-size: 40px;
+    margin: 10px auto;
+    display: block;
+}
+
+.speaker-btn:hover {
+    background-color: #b85c00;
+}
+
+/* Game-specific buttons */
+#gameButtonsContainer button {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    margin: 20px auto;
+}
+
+/* ===========================
+   LEVEL SELECTOR
+   =========================== */
+.level-selector {
+    margin: 30px 0;
+    padding: 20px;
+    background-color: #e8e5d6;
+    border-radius: 8px;
+}
+
+.level-selector label {
+    display: inline-block;
+    margin: 0 15px;
+    font-size: 22px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.level-selector input[type="radio"] {
+    width: 24px;
+    height: 24px;
+    margin: 0 10px;
+    cursor: pointer;
+}
+
+/* ===========================
+   GAME SCREENS
+   =========================== */
+.game-container {
+    text-align: center;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.task-description {
+    font-size: 28px;
+    margin-bottom: 40px;
+    color: #1a3a52;
+    background-color: #e8e5d6;
+    padding: 20px;
+    border-radius: 8px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===========================
+   GAME 1: SLOVA (Letter Recognition)
+   =========================== */
+.image-display {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto 40px;
+    font-size: 100px;
+    background-color: #e8e5d6;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.letter-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin: 40px 0;
+}
+
+.letter-button {
+    width: 120px;
+    height: 120px;
+    font-size: 48px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background-color: #2d5a7b;
+    color: #f5f3e9;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.letter-button:hover {
+    background-color: #1a3a52;
+    transform: scale(1.1);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.letter-button:active {
+    transform: scale(0.98);
+}
+
+/* ===========================
+   GAME 2: MEMORIJA (Memory Sequence)
+   =========================== */
+.color-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 150px);
+    gap: 30px;
+    margin: 40px auto;
+    justify-content: center;
+}
+
+.color-square {
+    width: 150px;
+    height: 150px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border: 3px solid #1a1a2e;
+}
+
+.color-square:hover {
+    transform: scale(1.05);
+}
+
+.color-square.active {
+    transform: scale(1.1);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.sequence-display {
+    font-size: 20px;
+    margin: 20px 0;
+    color: #4a5f7a;
+    min-height: 40px;
+}
+
+/* ===========================
+   GAME 3: REAKCIJA (Reaction - Star Click)
+   =========================== */
+.game-area {
+    width: 100%;
+    height: 400px;
+    background-color: #e8e5d6;
+    border-radius: 8px;
+    position: relative;
+    margin: 40px 0;
+    border: 3px solid #1a3a52;
+}
+
+.clickable-star {
+    position: absolute;
+    font-size: 80px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    user-select: none;
+}
+
+.clickable-star:hover {
+    transform: scale(1.15);
+}
+
+.reaction-info {
+    font-size: 20px;
+    margin-top: 20px;
+    color: #4a5f7a;
+}
+
+/* ===========================
+   FEEDBACK SYSTEM
+   =========================== */
+.feedback-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+    animation: flashFeedback 0.5s ease;
+    border-radius: 0;
+}
+
+.feedback-flash.correct {
+    background-color: rgba(34, 197, 94, 0.3);
+    box-shadow: inset 0 0 50px rgba(34, 197, 94, 0.5);
+}
+
+.feedback-flash.incorrect {
+    background-color: rgba(239, 68, 68, 0.3);
+    box-shadow: inset 0 0 50px rgba(239, 68, 68, 0.5);
+}
+
+@keyframes flashFeedback {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+/* ===========================
+   FINAL SCREEN
+   =========================== */
+.total-stars-info {
+    margin: 30px 0;
+}
+
+.total-stars-info p {
+    font-size: 24px;
+    color: #1a3a52;
+    margin-bottom: 15px;
+}
+
+.stars-display {
+    font-size: 72px;
+    margin: 30px 0;
+    letter-spacing: 10px;
+}
+
+.final-score {
+    font-size: 36px;
+    margin: 40px 0;
+    color: #1a3a52;
+    font-weight: bold;
+}
+
+.bravo-message {
+    font-size: 56px;
+    color: #d97706;
+    margin: 30px 0;
+    animation: bravoAnimation 1s ease;
+}
+
+@keyframes bravoAnimation {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+/* ===========================
+   INSTRUCTIONS SECTION
+   =========================== */
+.instructions-section {
+    background-color: #e8e5d6;
+    padding: 30px;
+    border-radius: 8px;
+    margin: 20px 0;
+    text-align: left;
+    font-size: 18px;
+    line-height: 1.8;
+}
+
+.instructions-section p {
+    margin-bottom: 12px;
+}
+
+/* ===========================
+   RESPONSIVE DESIGN
+   =========================== */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 36px;
+    }
+
+    h2 {
+        font-size: 28px;
+    }
+
+    h3 {
+        font-size: 20px;
+    }
+
+    button {
+        padding: 15px 30px;
+        font-size: 18px;
+    }
+
+    .letter-button {
+        width: 100px;
+        height: 100px;
+        font-size: 36px;
+    }
+
+    .color-grid {
+        grid-template-columns: repeat(2, 120px);
+        gap: 20px;
+    }
+
+    .color-square {
+        width: 120px;
+        height: 120px;
+    }
+
+    .game-area {
+        height: 300px;
+    }
+
+    .clickable-star {
+        font-size: 60px;
+    }
+
+    .star {
+        font-size: 36px;
+    }
+
+    #app {
+        padding: 20px;
+    }
+
+    .instructions-section {
+        padding: 20px;
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: 28px;
+    }
+
+    h2 {
+        font-size: 22px;
+    }
+
+    .progress-container {
+        gap: 10px;
+        margin-bottom: 30px;
+    }
+
+    .star {
+        font-size: 28px;
+    }
+
+    .image-display {
+        width: 120px;
+        height: 120px;
+        font-size: 70px;
+    }
+
+    .letter-button {
+        width: 80px;
+        height: 80px;
+        font-size: 28px;
+    }
+
+    .color-grid {
+        grid-template-columns: repeat(2, 100px);
+        gap: 15px;
+    }
+
+    .color-square {
+        width: 100px;
+        height: 100px;
+    }
+
+    button {
+        padding: 12px 24px;
+        font-size: 16px;
+        margin: 10px;
+    }
+}
