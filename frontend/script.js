@@ -88,15 +88,18 @@ const apiService = {
      */
     async addStars(starsEarned, gameId) {
         try {
+            // Allow optional bestReactionTime via extra parameter in args
+            const body = { starsEarned: starsEarned, gameId: gameId };
+            if (arguments.length > 2 && typeof arguments[2] === 'number') {
+                body.bestReactionTime = arguments[2];
+            }
+
             const response = await fetch(`${API_BASE_URL}/api/stars`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    starsEarned: starsEarned,
-                    gameId: gameId
-                })
+                body: JSON.stringify(body)
             });
 
             if (!response.ok) throw new Error('Failed to add stars');
@@ -119,6 +122,7 @@ const appState = {
     difficulty: 'easy',
     gameMode: null,
     isApiConnected: false,
+    bestReactionTimeSession: null,
 
     /**
      * Screen navigation
@@ -158,6 +162,10 @@ const appState = {
             updateStarsDisplay();
             showVisualFeedback('correct');
             playSound('correct');
+            // If session reached 5 stars, finalize session
+            if (this.sessionStars >= 5) {
+                finalizeSession();
+            }
         }
     }
 };
@@ -353,6 +361,8 @@ function updateStarsDisplay() {
 async function startGame(gameId) {
     appState.gameMode = gameId;
     appState.sessionStars = 0;
+    appState.bestReactionTimeSession = null;
+    appState._sessionFinalized = false;
     updateStarsDisplay();
 
     if (gameId === 'game1') {
@@ -388,6 +398,8 @@ async function initializeGame1() {
 
     game1State.words = gameData.words;
     game1State.currentIndex = 0;
+    // Speak instructions only once at the start of the game
+    speak('Look at the image and click the letter it starts with.');
     showGame1Word();
 }
 
@@ -418,8 +430,7 @@ function showGame1Word() {
         letterButtonsContainer.appendChild(btn);
     });
 
-    // Speak task
-    speak(`Look at the ${wordData.word}. Click the letter it starts with.`);
+    // Note: instructions are spoken once at game start
 }
 
 /**
@@ -447,9 +458,8 @@ function selectLetter(selected, correct) {
  * End Game 1
  */
 async function endGame1() {
-    // Save stars to backend
+    // Finalization handled by finalizeSession() when 5 stars are reached
     if (appState.isApiConnected) {
-        await apiService.addStars(appState.sessionStars, 'game1');
         appState.totalStars = await apiService.getTotalStars();
     }
 
@@ -477,10 +487,11 @@ async function initializeGame2() {
         return;
     }
 
+    // Progressive memory: start at level 2 up to 5
     game2State.colors = gameData.colors;
-    game2State.sequence = gameData.sequence;
     game2State.playerSequence = [];
     game2State.isPlaying = false;
+    game2State.level = 2;
 
     // Create color squares
     const colorGrid = document.getElementById('colorGrid');
@@ -495,8 +506,9 @@ async function initializeGame2() {
         colorGrid.appendChild(square);
     });
 
-    speak("Watch the colors carefully. When I'm done, you copy the pattern.");
-    startGame2Round();
+    // Speak instructions once at start
+    speak('Watch the colors carefully. When I am done, copy the pattern.');
+    generateAndStartLevel(game2State.level);
 }
 
 /**
@@ -505,6 +517,16 @@ async function initializeGame2() {
 function startGame2Round() {
     game2State.playerSequence = [];
     playSequence();
+}
+
+function generateAndStartLevel(level) {
+    // Generate random sequence of indices from colors
+    const seq = [];
+    for (let i = 0; i < level; i++) {
+        seq.push(Math.floor(Math.random() * game2State.colors.length));
+    }
+    game2State.sequence = seq;
+    startGame2Round();
 }
 
 /**
@@ -534,7 +556,6 @@ async function playSequence() {
 
     game2State.isPlaying = false;
     sequenceDisplay.textContent = 'Your turn! Click the colors in order...';
-    speak("Your turn! Click the colors in the same order.");
 }
 
 /**
@@ -577,10 +598,19 @@ function handleColorClick(index) {
         showVisualFeedback('correct');
         playSound('correct');
         appState.addStar();
-        speak("Excellent! You got it right!");
-        setTimeout(() => {
-            endGame2();
-        }, 1500);
+
+        // If below level 5, go to next level and keep playing
+        if (game2State.level < 5) {
+            game2State.level++;
+            setTimeout(() => {
+                generateAndStartLevel(game2State.level);
+            }, 1000);
+        } else {
+            // Completed level 5 -> end game
+            setTimeout(() => {
+                endGame2();
+            }, 1000);
+        }
     }
 }
 
@@ -597,8 +627,9 @@ function playColorTone(index) {
  * End Game 2
  */
 async function endGame2() {
+    // Finalization handled by finalizeSession() when 5 stars reached
+    // But if player finished early or API is required now, ensure totals updated
     if (appState.isApiConnected) {
-        await apiService.addStars(appState.sessionStars, 'game2');
         appState.totalStars = await apiService.getTotalStars();
     }
 
@@ -615,7 +646,7 @@ let game3State = {
     startTime: 0,
     timeout: 3000,
     attempts: 0,
-    maxAttempts: 3
+    maxAttempts: 5
 };
 
 /**
@@ -632,12 +663,14 @@ async function initializeGame3() {
     game3State.starActive = false;
     game3State.timeout = gameData.timeout;
     game3State.attempts = 0;
-    game3State.maxAttempts = gameData.attempts;
+    game3State.maxAttempts = 5; // Set max attempts to 5
+    appState.bestReactionTimeSession = null; // Initialize best reaction time session
 
     const reactionInfo = document.getElementById('reactionInfo');
     reactionInfo.textContent = 'Get ready... Click the star!';
 
-    speak("Click the star as fast as you can! Are you ready?");
+    // Speak instruction once at the start
+    speak('Click the star as fast as you can! Are you ready?');
 
     setTimeout(() => {
         placeRandomStar();
@@ -661,12 +694,16 @@ function placeRandomStar() {
     star.style.top = randomY + 'px';
 
     game3State.starActive = true;
-    game3State.startTime = Date.now();
+    // Use high-resolution timer for reaction time
+    game3State.startTime = performance.now();
 
+    // Auto-hide star if not clicked within timeout, then schedule next appearance
     setTimeout(() => {
         if (game3State.starActive) {
             game3State.starActive = false;
-            placeRandomStar();
+            // schedule next with a short random delay
+            const delay = 1000 + Math.random() * 2000; // 1-3s
+            setTimeout(() => placeRandomStar(), delay);
         }
     }, game3State.timeout);
 }
@@ -677,7 +714,7 @@ function placeRandomStar() {
 function clickStar() {
     if (!game3State.starActive) return;
 
-    const reactionTime = Date.now() - game3State.startTime;
+    const reactionTime = Math.round(performance.now() - game3State.startTime);
     game3State.reactionTimes.push(reactionTime);
     game3State.attempts++;
     game3State.starActive = false;
@@ -689,6 +726,21 @@ function clickStar() {
     reactionInfo.textContent = `Great! You clicked in ${reactionTime}ms!`;
 
     appState.addStar();
+
+    // After each catch, hide star and schedule next with random delay unless finished
+    if (game3State.attempts < game3State.maxAttempts) {
+        const delay = 1000 + Math.random() * 2000; // 1-3s
+        setTimeout(() => {
+            placeRandomStar();
+        }, delay);
+    } else {
+        // Compute best (fastest) reaction time
+        const best = Math.min(...game3State.reactionTimes);
+        appState.bestReactionTimeSession = best;
+        setTimeout(() => {
+            endGame3();
+        }, 800);
+    }
 
     // Check if done
     if (game3State.attempts < game3State.maxAttempts) {
@@ -714,8 +766,8 @@ document.addEventListener('click', function(e) {
  * End Game 3
  */
 async function endGame3() {
+    // Finalization handled in finalizeSession when reaching 5 stars
     if (appState.isApiConnected) {
-        await apiService.addStars(appState.sessionStars, 'game3');
         appState.totalStars = await apiService.getTotalStars();
     }
 
@@ -738,8 +790,39 @@ async function showFinalScreen() {
     const totalStars = appState.isApiConnected ? appState.totalStars : appState.sessionStars;
     document.getElementById('totalStars').textContent = totalStars;
 
+    // Display best reaction time if available
+    const bestEl = document.getElementById('finalBestReaction');
+    if (appState.bestReactionTimeSession != null) {
+        bestEl.textContent = `Best reaction (this session): ${appState.bestReactionTimeSession} ms`;
+    } else {
+        bestEl.textContent = '';
+    }
+
     // Speak congratulations
     speak(`Congratulations! You earned ${appState.sessionStars} stars in this game. Your total is ${totalStars} stars. Bravo!`);
 
     appState.showScreen('finalScreen');
+}
+
+/**
+ * Finalize session: send stars and optional best reaction time to backend once
+ */
+async function finalizeSession() {
+    if (appState._sessionFinalized) return;
+    appState._sessionFinalized = true;
+
+    try {
+        if (appState.isApiConnected) {
+            const resp = await apiService.addStars(appState.sessionStars, appState.gameMode, appState.bestReactionTimeSession);
+            if (resp && typeof resp.newTotal === 'number') {
+                appState.totalStars = resp.newTotal;
+            } else {
+                appState.totalStars = await apiService.getTotalStars();
+            }
+        }
+    } catch (err) {
+        console.error('Finalize session failed:', err);
+    }
+
+    showFinalScreen();
 }

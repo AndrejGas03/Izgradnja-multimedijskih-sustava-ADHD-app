@@ -54,7 +54,11 @@ function loadData() {
     return {
         totalStars: 0,
         sessionCount: 0,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        // Track best reaction time ever (ms)
+        bestReactionTimeAllTime: null,
+        // Last session's best reaction time
+        lastBestReactionTime: null
     };
 }
 
@@ -80,12 +84,13 @@ function saveData(data) {
  * Returns image and letter options
  */
 const game1Data = {
+    // Updated to a 5-question array for sequential rounds
     easy: [
-        { word: 'Apple', emoji: '🍎', correct: 'A', options: ['A', 'P', 'M'] },
-        { word: 'Ball', emoji: '🔵', correct: 'B', options: ['B', 'T', 'D'] },
+        { word: 'Apple', emoji: '🍎', correct: 'A', options: ['A', 'S', 'M'] },
+        { word: 'Sun', emoji: '☀️', correct: 'S', options: ['S', 'A', 'T'] },
         { word: 'Cat', emoji: '🐱', correct: 'C', options: ['C', 'K', 'S'] },
         { word: 'Dog', emoji: '🐕', correct: 'D', options: ['D', 'B', 'G'] },
-        { word: 'Elephant', emoji: '🐘', correct: 'E', options: ['E', 'A', 'I'] }
+        { word: 'Tree', emoji: '🌳', correct: 'T', options: ['T', 'L', 'P'] }
     ],
     hard: [
         { word: 'Zebra', emoji: '🦓', correct: 'Z', options: ['Z', 'S', 'X'] },
@@ -117,7 +122,8 @@ const game3Data = {
         easy: 3000,
         hard: 2000
     },
-    attempts: 3
+    // Increase attempts to 5 for multi-star session
+    attempts: 5
 };
 
 // =====================================================
@@ -167,7 +173,7 @@ app.get('/api/stars', (req, res) => {
  */
 app.post('/api/stars', (req, res) => {
     try {
-        const { starsEarned, gameId } = req.body;
+        const { starsEarned, gameId, bestReactionTime } = req.body;
 
         // Validate input
         if (typeof starsEarned !== 'number' || starsEarned < 0 || starsEarned > 5) {
@@ -179,10 +185,18 @@ app.post('/api/stars', (req, res) => {
 
         // Load and update data
         let data = loadData();
-        data.totalStars += starsEarned;
-        data.sessionCount += 1;
+        data.totalStars = (data.totalStars || 0) + starsEarned;
+        data.sessionCount = (data.sessionCount || 0) + 1;
         data.lastUpdated = new Date().toISOString();
         data.lastGameId = gameId || 'unknown';
+
+        // If bestReactionTime provided (ms), update lastBest and all-time best
+        if (typeof bestReactionTime === 'number' && !isNaN(bestReactionTime)) {
+            data.lastBestReactionTime = bestReactionTime;
+            if (data.bestReactionTimeAllTime == null || bestReactionTime < data.bestReactionTimeAllTime) {
+                data.bestReactionTimeAllTime = bestReactionTime;
+            }
+        }
 
         // Save updated data
         if (saveData(data)) {
@@ -190,7 +204,9 @@ app.post('/api/stars', (req, res) => {
                 success: true,
                 message: `Added ${starsEarned} stars`,
                 newTotal: data.totalStars,
-                sessionCount: data.sessionCount
+                sessionCount: data.sessionCount,
+                lastBestReactionTime: data.lastBestReactionTime || null,
+                bestReactionTimeAllTime: data.bestReactionTimeAllTime || null
             });
         } else {
             throw new Error('Failed to save data');
