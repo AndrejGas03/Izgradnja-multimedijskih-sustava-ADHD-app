@@ -86,18 +86,18 @@ function saveData(data) {
 const game1Data = {
     // Updated to a 5-question array for sequential rounds
     easy: [
-        { word: 'Apple', emoji: '🍎', correct: 'A', options: ['A', 'S', 'M'] },
-        { word: 'Sun', emoji: '☀️', correct: 'S', options: ['S', 'A', 'T'] },
-        { word: 'Cat', emoji: '🐱', correct: 'C', options: ['C', 'K', 'S'] },
-        { word: 'Dog', emoji: '🐕', correct: 'D', options: ['D', 'B', 'G'] },
-        { word: 'Tree', emoji: '🌳', correct: 'T', options: ['T', 'L', 'P'] }
+        { word: 'Jabuka', emoji: '🍎', correct: 'J', options: ['J', 'S', 'M'] },
+        { word: 'Sunce', emoji: '☀️', correct: 'S', options: ['S', 'A', 'T'] },
+        { word: 'Mačka', emoji: '🐱', correct: 'M', options: ['M', 'K', 'C'] },
+        { word: 'Pas', emoji: '🐕', correct: 'P', options: ['P', 'B', 'G'] },
+        { word: 'Drvo', emoji: '🌳', correct: 'D', options: ['D', 'L', 'P'] }
     ],
     hard: [
         { word: 'Zebra', emoji: '🦓', correct: 'Z', options: ['Z', 'S', 'X'] },
-        { word: 'Xylophone', emoji: '🎵', correct: 'X', options: ['X', 'Z', 'V'] },
-        { word: 'Quilt', emoji: '🧵', correct: 'Q', options: ['Q', 'O', 'P'] },
-        { word: 'Violin', emoji: '🎻', correct: 'V', options: ['V', 'W', 'U'] },
-        { word: 'Walrus', emoji: '🦭', correct: 'W', options: ['W', 'V', 'Y'] }
+        { word: 'Nota', emoji: '🎵', correct: 'N', options: ['N', 'Z', 'V'] },
+        { word: 'Igla', emoji: '🧵', correct: 'I', options: ['I', 'O', 'P'] },
+        { word: 'Violina', emoji: '🎻', correct: 'V', options: ['V', 'W', 'U'] },
+        { word: 'Tuljan', emoji: '🦭', correct: 'T', options: ['T', 'V', 'Y'] }
     ]
 };
 
