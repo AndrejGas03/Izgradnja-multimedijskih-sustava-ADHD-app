@@ -142,15 +142,21 @@ const appState = {
     goHome() {
         this.showScreen('homeScreen');
         this.gameMode = null;
+        refreshTotalStars();
     },
 
     /**
      * Reset app for next session
      */
     async resetApp() {
-        this.sessionStars = 0;
-        updateStarsDisplay();
-        this.goHome();
+        const lastGame = this.gameMode;
+        if (lastGame) {
+            await startGame(lastGame);
+        } else {
+            this.sessionStars = 0;
+            updateStarsDisplay();
+            this.goHome();
+        }
     },
 
     /**
@@ -182,23 +188,26 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 async function initializeApp() {
-    // Check API connection
     const isConnected = await apiService.checkConnection();
     appState.isApiConnected = isConnected;
     updateConnectionStatus(isConnected);
 
-    // Load total stars from backend
-    const totalStars = await apiService.getTotalStars();
-    appState.totalStars = totalStars;
+    await refreshTotalStars();
 
-    // Setup event listeners
     setupEventListeners();
-
-    // Load games list
     await loadGamesList();
-
-    // Play startup sound
     playSound('start');
+}
+
+/**
+ * Dohvati ukupne zvijezdice s backenda i prikaži ih na početnom zaslonu
+ */
+async function refreshTotalStars() {
+    if (!appState.isApiConnected) return;
+    const total = await apiService.getTotalStars();
+    appState.totalStars = total;
+    const el = document.getElementById('homeTotalStarsCount');
+    if (el) el.textContent = total;
 }
 
 function setupEventListeners() {
@@ -219,11 +228,11 @@ function setupEventListeners() {
 function updateConnectionStatus(isConnected) {
     const status = document.getElementById('connectionStatus');
     if (isConnected) {
-        status.textContent = '✅ Connected to server';
+        status.textContent = '✅ Spojeno na server';
         status.classList.add('connected');
         status.classList.remove('error');
     } else {
-        status.textContent = '❌ Server connection failed';
+        status.textContent = '❌ Spajanje na server nije uspjelo';
         status.classList.add('error');
         status.classList.remove('connected');
     }
@@ -255,27 +264,56 @@ async function loadGamesList() {
  * Speak instructions using Web Speech API
  */
 function speakInstructions() {
-    const message = "Welcome to Learning Games! " +
-        "Game One: Look at an image and click the letter it starts with. " +
-        "Game Two: Watch colors light up and click them in the same order. " +
-        "Game Three: Click the star as fast as you can! " +
-        "Choose your difficulty level and a game to start.";
+    const message = "Dobrodošao u Igre učenja! " +
+        "Igra jedna: Pogledaj sliku i klikni slovo kojim počinje. " +
+        "Igra dva: Gledaj boje kako svijetle i klikni ih istim redoslijedom. " +
+        "Igra tri: Klikni zvijezdicu što brže možeš! " +
+        "Odaberi razinu težine i počni igru.";
 
     speak(message);
 }
 
-/**
- * Generic speech function using Web Speech API
- */
-function speak(text) {
-    if ('speechSynthesis' in window) {
-        speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.9; // Slightly slower for clarity
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-        speechSynthesis.speak(utterance);
+// Cached Croatian voice — populated as soon as the browser loads its voice list
+let croatianVoice = null;
+
+function loadVoices() {
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return;
+
+    // Open browser console (F12) to see which voices your device has
+    console.log('[TTS] Dostupni glasovi:', voices.map(v => `${v.name} (${v.lang})`));
+
+    croatianVoice =
+        voices.find(v => v.lang === 'hr-HR') ||
+        voices.find(v => v.lang.startsWith('hr')) ||
+        voices.find(v => v.name.toLowerCase().includes('matej')) ||
+        voices.find(v => v.name.toLowerCase().includes('croatian')) ||
+        voices.find(v => v.name.toLowerCase().includes('hrvatski')) ||
+        null;
+
+    if (croatianVoice) {
+        console.log('[TTS] Odabran glas:', croatianVoice.name, `(${croatianVoice.lang})`);
+    } else {
+        console.warn('[TTS] Hrvatski glas nije pronađen na ovom uređaju.');
+        console.warn('[TTS] Windows: Postavke → Vrijeme i jezik → Govor → Dodaj glasove → Hrvatski');
     }
+}
+
+if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices();
+}
+
+function speak(text) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'hr-HR';
+    if (croatianVoice) utterance.voice = croatianVoice;
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    speechSynthesis.speak(utterance);
 }
 
 /* ========================================
@@ -352,6 +390,28 @@ function updateStarsDisplay() {
 }
 
 /* ========================================
+   UTILITIES
+   ======================================== */
+
+// Fisher-Yates shuffle — returns a new shuffled array
+function shuffle(array) {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+const LETTER_POOL = ['A','B','C','Č','D','Đ','E','F','G','H','I','J','K','L','M','N','O','P','R','S','Š','T','U','V','Z','Ž'];
+
+// Returns [correctLetter, distractor1, distractor2] in random order
+function generateOptions(correctLetter) {
+    const pool = LETTER_POOL.filter(l => l !== correctLetter);
+    return shuffle([correctLetter, ...shuffle(pool).slice(0, 2)]);
+}
+
+/* ========================================
    GAME MANAGEMENT
    ======================================== */
 
@@ -383,7 +443,8 @@ async function startGame(gameId) {
 
 let game1State = {
     words: [],
-    currentIndex: 0
+    currentIndex: 0,
+    correctCount: 0
 };
 
 /**
@@ -392,14 +453,15 @@ let game1State = {
 async function initializeGame1() {
     const gameData = await apiService.getGameData('game1', appState.difficulty);
     if (!gameData || !gameData.words) {
-        speak("Sorry, I couldn't load the game. Please try again.");
+        speak("Žao mi je, igra se nije mogla učitati. Molim pokušaj ponovo.");
         return;
     }
 
-    game1State.words = gameData.words;
+    const rounds = appState.difficulty === 'easy' ? 5 : 10;
+    game1State.words = shuffle(gameData.words).slice(0, rounds);
     game1State.currentIndex = 0;
-    // Speak instructions only once at the start of the game
-    speak('Look at the image and click the letter it starts with.');
+    game1State.correctCount = 0;
+    speak('Pogledaj sliku i klikni slovo kojim počinje.');
     showGame1Word();
 }
 
@@ -413,24 +475,24 @@ function showGame1Word() {
     }
 
     const wordData = game1State.words[game1State.currentIndex];
+    const total = game1State.words.length;
+    const qNum  = game1State.currentIndex + 1;
 
-    // Display image
+    document.getElementById('game1Task').textContent =
+        `Pitanje ${qNum}/${total} — Kojim slovom počinje?`;
     document.getElementById('imageDisplay').textContent = wordData.emoji;
 
-    // Shuffle and display letter buttons
-    const shuffledOptions = [...wordData.options].sort(() => Math.random() - 0.5);
+    const options = generateOptions(wordData.correct);
     const letterButtonsContainer = document.getElementById('letterButtons');
     letterButtonsContainer.innerHTML = '';
 
-    shuffledOptions.forEach(letter => {
+    options.forEach(letter => {
         const btn = document.createElement('button');
         btn.className = 'letter-button';
         btn.textContent = letter;
         btn.onclick = () => selectLetter(letter, wordData.correct);
         letterButtonsContainer.appendChild(btn);
     });
-
-    // Note: instructions are spoken once at game start
 }
 
 /**
@@ -438,19 +500,25 @@ function showGame1Word() {
  */
 function selectLetter(selected, correct) {
     if (selected === correct) {
-        showVisualFeedback('correct');
-        playSound('correct');
-        appState.addStar();
-        speak("Correct! Great job!");
+        game1State.correctCount++;
+        speak("Točno! Odličan posao!");
+
+        // Lako: zvijezdica za svaki točan odgovor (5 pitanja = 5 zvijezdica)
+        // Teško: zvijezdica svakih 2 točna odgovora (10 pitanja = 5 zvijezdica)
+        const awardStar = appState.difficulty === 'easy' || game1State.correctCount % 2 === 0;
+        if (awardStar) {
+            appState.addStar(); // uključuje vizualni + audio feedback
+        } else {
+            showVisualFeedback('correct');
+            playSound('correct');
+        }
 
         game1State.currentIndex++;
-        setTimeout(() => {
-            showGame1Word();
-        }, 1500);
+        setTimeout(() => showGame1Word(), 1500);
     } else {
         showVisualFeedback('incorrect');
         playSound('incorrect');
-        speak("Try again!");
+        speak("Pokušaj ponovo!");
     }
 }
 
@@ -458,12 +526,7 @@ function selectLetter(selected, correct) {
  * End Game 1
  */
 async function endGame1() {
-    // Finalization handled by finalizeSession() when 5 stars are reached
-    if (appState.isApiConnected) {
-        appState.totalStars = await apiService.getTotalStars();
-    }
-
-    showFinalScreen();
+    await finalizeSession();
 }
 
 /* ========================================
@@ -483,7 +546,7 @@ let game2State = {
 async function initializeGame2() {
     const gameData = await apiService.getGameData('game2', appState.difficulty);
     if (!gameData) {
-        speak("Sorry, I couldn't load the game. Please try again.");
+        speak("Žao mi je, igra se nije mogla učitati. Molim pokušaj ponovo.");
         return;
     }
 
@@ -491,7 +554,7 @@ async function initializeGame2() {
     game2State.colors = gameData.colors;
     game2State.playerSequence = [];
     game2State.isPlaying = false;
-    game2State.level = 2;
+    game2State.level = 1;
 
     // Create color squares
     const colorGrid = document.getElementById('colorGrid');
@@ -507,7 +570,7 @@ async function initializeGame2() {
     });
 
     // Speak instructions once at start
-    speak('Watch the colors carefully. When I am done, copy the pattern.');
+    speak('Pažljivo gledaj boje. Kada završim, ponovi redoslijed.');
     generateAndStartLevel(game2State.level);
 }
 
@@ -520,9 +583,9 @@ function startGame2Round() {
 }
 
 function generateAndStartLevel(level) {
-    // Generate random sequence of indices from colors
+    const sequenceLength = level + 2; // runda 1→3, 2→4, 3→5, 4→6, 5→7 boja
     const seq = [];
-    for (let i = 0; i < level; i++) {
+    for (let i = 0; i < sequenceLength; i++) {
         seq.push(Math.floor(Math.random() * game2State.colors.length));
     }
     game2State.sequence = seq;
@@ -534,34 +597,35 @@ function generateAndStartLevel(level) {
  */
 async function playSequence() {
     game2State.isPlaying = true;
-    const sequenceDisplay = document.getElementById('sequenceDisplay');
-    sequenceDisplay.textContent = 'Watch carefully...';
 
-    // Disable clicks during playback
+    const flashDuration = appState.difficulty === 'easy' ? 1000 : 500;
+    const pauseDuration = appState.difficulty === 'easy' ? 500  : 250;
+
+    const sequenceDisplay = document.getElementById('sequenceDisplay');
+    sequenceDisplay.textContent = `Runda ${game2State.level}/5 — Pažljivo gledaj (${game2State.sequence.length} boja)...`;
+
     document.querySelectorAll('.color-square').forEach(sq => {
         sq.style.pointerEvents = 'none';
     });
 
-    // Play each color
     for (let i = 0; i < game2State.sequence.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        flashColor(game2State.sequence[i]);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, pauseDuration));
+        flashColor(game2State.sequence[i], flashDuration);
+        await new Promise(resolve => setTimeout(resolve, flashDuration + pauseDuration));
     }
 
-    // Enable clicks for player
     document.querySelectorAll('.color-square').forEach(sq => {
         sq.style.pointerEvents = 'auto';
     });
 
     game2State.isPlaying = false;
-    sequenceDisplay.textContent = 'Your turn! Click the colors in order...';
+    sequenceDisplay.textContent = `Tvoj red! Ponovi ${game2State.sequence.length} boja po redu...`;
 }
 
 /**
  * Flash a specific color
  */
-function flashColor(index) {
+function flashColor(index, duration = 300) {
     const squares = document.querySelectorAll('.color-square');
     const square = squares[index];
     square.classList.add('active');
@@ -570,7 +634,7 @@ function flashColor(index) {
 
     setTimeout(() => {
         square.classList.remove('active');
-    }, 300);
+    }, duration);
 }
 
 /**
@@ -587,7 +651,7 @@ function handleColorClick(index) {
         game2State.sequence[game2State.playerSequence.length - 1]) {
         showVisualFeedback('incorrect');
         playSound('incorrect');
-        speak("Oops! That's not right. Let's try again!");
+        speak("Ups! To nije točno. Pokušajmo ponovo!");
         game2State.playerSequence = [];
         setTimeout(() => playSequence(), 1000);
         return;
@@ -644,9 +708,10 @@ let game3State = {
     reactionTimes: [],
     starActive: false,
     startTime: 0,
-    timeout: 3000,
+    timeout: 2000,
     attempts: 0,
-    maxAttempts: 5
+    successClicks: 0,
+    maxAttempts: 10
 };
 
 /**
@@ -655,7 +720,7 @@ let game3State = {
 async function initializeGame3() {
     const gameData = await apiService.getGameData('game3', appState.difficulty);
     if (!gameData) {
-        speak("Sorry, I couldn't load the game. Please try again.");
+        speak("Žao mi je, igra se nije mogla učitati. Molim pokušaj ponovo.");
         return;
     }
 
@@ -663,14 +728,15 @@ async function initializeGame3() {
     game3State.starActive = false;
     game3State.timeout = gameData.timeout;
     game3State.attempts = 0;
-    game3State.maxAttempts = 5; // Set max attempts to 5
-    appState.bestReactionTimeSession = null; // Initialize best reaction time session
+    game3State.successClicks = 0;
+    game3State.maxAttempts = gameData.attempts || 10;
+    appState.bestReactionTimeSession = null;
 
     const reactionInfo = document.getElementById('reactionInfo');
-    reactionInfo.textContent = 'Get ready... Click the star!';
+    reactionInfo.textContent = 'Pripremi se... Klikni zvijezdicu!';
 
     // Speak instruction once at the start
-    speak('Click the star as fast as you can! Are you ready?');
+    speak('Klikni zvijezdicu što brže možeš! Jesi li spreman?');
 
     setTimeout(() => {
         placeRandomStar();
@@ -683,29 +749,52 @@ async function initializeGame3() {
 function placeRandomStar() {
     const gameArea = document.getElementById('gameArea');
     const star = document.getElementById('clickableStar');
+    const starSize = 80;
+    const padding = 10;
 
-    const maxX = gameArea.clientWidth - 80;
-    const maxY = gameArea.clientHeight - 80;
+    const maxX = Math.max(0, gameArea.clientWidth  - starSize - padding * 2);
+    const maxY = Math.max(0, gameArea.clientHeight - starSize - padding * 2);
 
-    const randomX = Math.random() * maxX;
-    const randomY = Math.random() * maxY;
-
-    star.style.left = randomX + 'px';
-    star.style.top = randomY + 'px';
+    star.style.left = (padding + Math.floor(Math.random() * maxX)) + 'px';
+    star.style.top  = (padding + Math.floor(Math.random() * maxY)) + 'px';
 
     game3State.starActive = true;
-    // Use high-resolution timer for reaction time
     game3State.startTime = performance.now();
 
-    // Auto-hide star if not clicked within timeout, then schedule next appearance
-    setTimeout(() => {
-        if (game3State.starActive) {
-            game3State.starActive = false;
-            // schedule next with a short random delay
-            const delay = 1000 + Math.random() * 2000; // 1-3s
-            setTimeout(() => placeRandomStar(), delay);
+    // Na teškoj razini zvjezdica automatski bježi ako nije kliknuta na vrijeme
+    if (appState.difficulty === 'hard') {
+        setTimeout(() => {
+            if (game3State.starActive) {
+                missedStar();
+            }
+        }, game3State.timeout);
+    }
+    // Na lakoj razini zvjezdica čeka klik bez vremenskog ograničenja
+}
+
+/**
+ * Promašaj (samo teška razina) — zvjezdica nije kliknuta na vrijeme
+ */
+function missedStar() {
+    game3State.starActive = false;
+    game3State.attempts++;
+
+    showVisualFeedback('incorrect');
+    playSound('incorrect');
+
+    const reactionInfo = document.getElementById('reactionInfo');
+    reactionInfo.textContent = `Promašaj! (${game3State.attempts}/${game3State.maxAttempts}) Budi brži!`;
+
+    if (game3State.attempts >= game3State.maxAttempts) {
+        if (game3State.reactionTimes.length > 0) {
+            appState.bestReactionTimeSession = Math.min(...game3State.reactionTimes);
         }
-    }, game3State.timeout);
+        setTimeout(() => endGame3(), 1500);
+    } else {
+        reactionInfo.textContent += ' Pripremi se...';
+        const delay = 600 + Math.random() * 800;
+        setTimeout(() => placeRandomStar(), delay);
+    }
 }
 
 /**
@@ -717,41 +806,33 @@ function clickStar() {
     const reactionTime = Math.round(performance.now() - game3State.startTime);
     game3State.reactionTimes.push(reactionTime);
     game3State.attempts++;
+    game3State.successClicks++;
     game3State.starActive = false;
 
-    showVisualFeedback('correct');
-    playSound('correct');
-
     const reactionInfo = document.getElementById('reactionInfo');
-    reactionInfo.textContent = `Great! You clicked in ${reactionTime}ms!`;
+    reactionInfo.textContent = `Odlično! Kliknuo si za ${reactionTime}ms! (${game3State.attempts}/${game3State.maxAttempts})`;
 
-    appState.addStar();
+    const isLast = game3State.attempts >= game3State.maxAttempts;
 
-    // After each catch, hide star and schedule next with random delay unless finished
-    if (game3State.attempts < game3State.maxAttempts) {
-        const delay = 1000 + Math.random() * 2000; // 1-3s
-        setTimeout(() => {
-            placeRandomStar();
-        }, delay);
-    } else {
-        // Compute best (fastest) reaction time
-        const best = Math.min(...game3State.reactionTimes);
-        appState.bestReactionTimeSession = best;
-        setTimeout(() => {
-            endGame3();
-        }, 800);
+    // Postavi best time prije addStar() koji može pokrenuti finalizeSession()
+    if (isLast) {
+        appState.bestReactionTimeSession = Math.min(...game3State.reactionTimes);
     }
 
-    // Check if done
-    if (game3State.attempts < game3State.maxAttempts) {
-        reactionInfo.textContent += ' Get ready for the next one...';
-        setTimeout(() => {
-            placeRandomStar();
-        }, 1000);
+    // Zvijezdica svakih 2 uspješna klika → max 5 zvijezdica
+    if (game3State.successClicks % 2 === 0) {
+        appState.addStar();
     } else {
-        setTimeout(() => {
-            endGame3();
-        }, 1500);
+        showVisualFeedback('correct');
+        playSound('correct');
+    }
+
+    if (!isLast) {
+        reactionInfo.textContent += ' Pripremi se za sljedeću...';
+        const delay = 1000 + Math.random() * 2000;
+        setTimeout(() => placeRandomStar(), delay);
+    } else {
+        setTimeout(() => endGame3(), 1500);
     }
 }
 
@@ -766,12 +847,7 @@ document.addEventListener('click', function(e) {
  * End Game 3
  */
 async function endGame3() {
-    // Finalization handled in finalizeSession when reaching 5 stars
-    if (appState.isApiConnected) {
-        appState.totalStars = await apiService.getTotalStars();
-    }
-
-    showFinalScreen();
+    await finalizeSession();
 }
 
 /* ========================================
@@ -784,7 +860,7 @@ async function endGame3() {
 async function showFinalScreen() {
     // Display session stars
     const starsDisplay = '⭐'.repeat(appState.sessionStars);
-    document.getElementById('finalStars').textContent = starsDisplay || 'Try again!';
+    document.getElementById('finalStars').textContent = starsDisplay || 'Pokušaj ponovo!';
 
     // Display total stars
     const totalStars = appState.isApiConnected ? appState.totalStars : appState.sessionStars;
@@ -793,13 +869,13 @@ async function showFinalScreen() {
     // Display best reaction time if available
     const bestEl = document.getElementById('finalBestReaction');
     if (appState.bestReactionTimeSession != null) {
-        bestEl.textContent = `Best reaction (this session): ${appState.bestReactionTimeSession} ms`;
+        bestEl.textContent = `Najbolje reakcijsko vrijeme (ova sesija): ${appState.bestReactionTimeSession} ms`;
     } else {
         bestEl.textContent = '';
     }
 
     // Speak congratulations
-    speak(`Congratulations! You earned ${appState.sessionStars} stars in this game. Your total is ${totalStars} stars. Bravo!`);
+    speak(`Čestitamo! Zaradio si ${appState.sessionStars} zvijezdica u ovoj igri. Ukupno imaš ${totalStars} zvijezdica. Bravo!`);
 
     appState.showScreen('finalScreen');
 }

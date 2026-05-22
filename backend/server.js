@@ -83,23 +83,39 @@ function saveData(data) {
  * Game 1: Slova (Letter Recognition)
  * Returns image and letter options
  */
-const game1Data = {
-    // Updated to a 5-question array for sequential rounds
-    easy: [
-        { word: 'Jabuka', emoji: '🍎', correct: 'J', options: ['J', 'S', 'M'] },
-        { word: 'Sunce', emoji: '☀️', correct: 'S', options: ['S', 'A', 'T'] },
-        { word: 'Mačka', emoji: '🐱', correct: 'M', options: ['M', 'K', 'C'] },
-        { word: 'Pas', emoji: '🐕', correct: 'P', options: ['P', 'B', 'G'] },
-        { word: 'Drvo', emoji: '🌳', correct: 'D', options: ['D', 'L', 'P'] }
-    ],
-    hard: [
-        { word: 'Zebra', emoji: '🦓', correct: 'Z', options: ['Z', 'S', 'X'] },
-        { word: 'Nota', emoji: '🎵', correct: 'N', options: ['N', 'Z', 'V'] },
-        { word: 'Igla', emoji: '🧵', correct: 'I', options: ['I', 'O', 'P'] },
-        { word: 'Violina', emoji: '🎻', correct: 'V', options: ['V', 'W', 'U'] },
-        { word: 'Tuljan', emoji: '🦭', correct: 'T', options: ['T', 'V', 'Y'] }
-    ]
-};
+// Jedinstvena baza od 30 pojmova — frontend bira 5 (lako) ili 10 (teško)
+const game1Data = [
+    { word: 'Jabuka',    emoji: '🍎', correct: 'J' },
+    { word: 'Sunce',     emoji: '☀️', correct: 'S' },
+    { word: 'Mačka',     emoji: '🐱', correct: 'M' },
+    { word: 'Pas',       emoji: '🐕', correct: 'P' },
+    { word: 'Drvo',      emoji: '🌳', correct: 'D' },
+    { word: 'Brod',      emoji: '🚢', correct: 'B' },
+    { word: 'Kuća',      emoji: '🏠', correct: 'K' },
+    { word: 'Ribica',    emoji: '🐟', correct: 'R' },
+    { word: 'Cvijet',    emoji: '🌸', correct: 'C' },
+    { word: 'Lopta',     emoji: '⚽', correct: 'L' },
+    { word: 'Slon',      emoji: '🐘', correct: 'S' },
+    { word: 'Auto',      emoji: '🚗', correct: 'A' },
+    { word: 'Knjiga',    emoji: '📚', correct: 'K' },
+    { word: 'Miš',       emoji: '🐭', correct: 'M' },
+    { word: 'Vlak',      emoji: '🚂', correct: 'V' },
+    { word: 'Torba',     emoji: '👜', correct: 'T' },
+    { word: 'Avion',     emoji: '✈️', correct: 'A' },
+    { word: 'Banana',    emoji: '🍌', correct: 'B' },
+    { word: 'Gitara',    emoji: '🎸', correct: 'G' },
+    { word: 'Medvjed',   emoji: '🐻', correct: 'M' },
+    { word: 'Sladoled',  emoji: '🍦', correct: 'S' },
+    { word: 'Traktor',   emoji: '🚜', correct: 'T' },
+    { word: 'Žaba',      emoji: '🐸', correct: 'Ž' },
+    { word: 'Čokolada',  emoji: '🍫', correct: 'Č' },
+    { word: 'Leptirić',  emoji: '🦋', correct: 'L' },
+    { word: 'Kišobran',  emoji: '☂️', correct: 'K' },
+    { word: 'Krokodil',  emoji: '🐊', correct: 'K' },
+    { word: 'Hobotnica', emoji: '🐙', correct: 'H' },
+    { word: 'Lav',       emoji: '🦁', correct: 'L' },
+    { word: 'Zebra',     emoji: '🦓', correct: 'Z' },
+];
 
 /**
  * Game 2: Memorija (Memory Sequence)
@@ -122,8 +138,7 @@ const game3Data = {
         easy: 3000,
         hard: 2000
     },
-    // Increase attempts to 5 for multi-star session
-    attempts: 5
+    attempts: 10
 };
 
 // =====================================================
@@ -253,7 +268,7 @@ app.get('/api/game/:gameId/:difficulty', (req, res) => {
                 game: 'game1',
                 name: 'Slova - Letter Recognition',
                 difficulty: difficulty,
-                words: game1Data[difficulty],
+                words: game1Data,
                 description: 'Click the starting letter of the image'
             };
         } else if (gameId === 'game2') {
@@ -306,19 +321,19 @@ app.get('/api/games', (req, res) => {
             {
                 id: 'game1',
                 name: 'Slova',
-                description: 'Find the starting letter',
+                description: 'Pronađi početno slovo',
                 emoji: '🔤'
             },
             {
                 id: 'game2',
                 name: 'Memorija',
-                description: 'Memory color sequence',
+                description: 'Zapamti redoslijed boja',
                 emoji: '🎨'
             },
             {
                 id: 'game3',
                 name: 'Reakcija',
-                description: 'Catch the star fast',
+                description: 'Uhvati zvijezdicu što brže',
                 emoji: '⚡'
             }
         ]

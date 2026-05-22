@@ -33,7 +33,7 @@ body {
     line-height: 1.6;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     min-height: 100vh;
     padding: 20px;
 }
@@ -71,6 +71,20 @@ body {
 .connection-status.error {
     color: #ef4444;
     background-color: #fef2f2;
+}
+
+/* ===========================
+   HOME SCREEN — UKUPNE ZVIJEZDICE
+   =========================== */
+.home-total-stars {
+    font-size: 22px;
+    font-weight: bold;
+    color: #1a3a52;
+    background-color: #e8e5d6;
+    padding: 14px 28px;
+    border-radius: 8px;
+    margin: 15px auto;
+    display: inline-block;
 }
 
 /* ===========================
